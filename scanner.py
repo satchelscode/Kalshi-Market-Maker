@@ -53,6 +53,12 @@ class MarketScanner:
     def _fetch_markets(self) -> list[dict]:
         """Fetch open markets with a page cap to avoid OOM."""
         all_markets = []
+        logger.info(
+            "Scanner config: min_vol=%d, min_oi=%d, min_tte=%ds",
+            self.config.min_volume_24h,
+            self.config.min_open_interest,
+            self.config.min_time_to_expiry_sec,
+        )
 
         if self.config.target_series:
             for series in self.config.target_series:
@@ -81,6 +87,17 @@ class MarketScanner:
                     break
 
         logger.info("Fetched %d open markets (%d pages)", len(all_markets), pages)
+        # Log a sample of what we got
+        if all_markets:
+            sample = all_markets[:3]
+            for m in sample:
+                logger.info(
+                    "Sample market: %s vol=%s oi=%s close=%s",
+                    m.get("ticker", "?"),
+                    m.get("volume_24h", "?"),
+                    m.get("open_interest", "?"),
+                    m.get("close_time", m.get("expiration_time", "?")),
+                )
         return all_markets
 
     def _scan_specific_tickers(self, tickers: list[str]) -> list[MarketInfo]:
