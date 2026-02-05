@@ -81,7 +81,6 @@ class KalshiClient:
                 password=None,
             )
         return self._private_key
-        return self._private_key
 
     def _sign_request(self, method: str, path: str, timestamp: str) -> str:
         """Generate RSA-PSS signature for Kalshi API auth."""
@@ -98,7 +97,8 @@ class KalshiClient:
         return base64.b64encode(signature).decode()
 
     def _auth_headers(self, method: str, path: str) -> dict[str, str]:
-        timestamp = str(int(datetime.now(timezone.utc).timestamp() * 1000))
+        # Use time.time() to match Kalshi's official starter code exactly
+        timestamp = str(int(time.time() * 1000))
         signature = self._sign_request(method.upper(), path, timestamp)
         return {
             "KALSHI-ACCESS-KEY": self.config.key_id,
