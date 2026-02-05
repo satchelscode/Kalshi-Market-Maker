@@ -240,12 +240,12 @@ class KalshiClient:
             "Creating order: %s %s %s %s @ %d¢ x%d",
             ticker, action, side, order_type, price, count,
         )
-        return self._request("POST", "/orders", json_body=body, is_write=True)
+        return self._request("POST", "/portfolio/orders", json_body=body, is_write=True)
 
     def cancel_order(self, order_id: str) -> dict:
         """Cancel a resting order."""
         logger.info("Canceling order: %s", order_id)
-        return self._request("DELETE", f"/orders/{order_id}", is_write=True)
+        return self._request("DELETE", f"/portfolio/orders/{order_id}", is_write=True)
 
     def amend_order(
         self,
@@ -261,14 +261,14 @@ class KalshiClient:
             body["count"] = count
         logger.info("Amending order %s: %s", order_id, body)
         return self._request(
-            "PUT", f"/orders/{order_id}/amend", json_body=body, is_write=True
+            "PUT", f"/portfolio/orders/{order_id}/amend", json_body=body, is_write=True
         )
 
     def batch_create_orders(self, orders: list[dict]) -> dict:
         """Batch create multiple orders."""
         logger.info("Batch creating %d orders", len(orders))
         return self._request(
-            "POST", "/orders/batches", json_body={"orders": orders}, is_write=True
+            "POST", "/portfolio/orders/batched", json_body={"orders": orders}, is_write=True
         )
 
     def batch_cancel_orders(self, order_ids: list[str]) -> dict:
@@ -276,7 +276,7 @@ class KalshiClient:
         logger.info("Batch canceling %d orders", len(order_ids))
         return self._request(
             "DELETE",
-            "/orders/batches",
+            "/portfolio/orders/batched",
             json_body={"order_ids": order_ids},
             is_write=True,
         )
