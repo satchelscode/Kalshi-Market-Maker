@@ -6,7 +6,7 @@ api:
   # Path to RSA private key file (.pem)
   private_key_path: "kalshi_private_key.pem"
   # Environment: "demo" or "prod"
-  environment: "demo"
+  environment: "prod"
 
 scanner:
   # Market series to scan (e.g., sports tickers)
@@ -18,7 +18,7 @@ scanner:
   # Minimum open interest
   min_open_interest: 50
   # Maximum number of markets to quote simultaneously
-  max_markets: 5
+  max_markets: 3
   # Skip markets expiring within this many seconds
   min_time_to_expiry_sec: 3600
 
@@ -35,7 +35,7 @@ pricing:
 
 quoting:
   # Default order size (number of contracts)
-  order_size: 10
+  order_size: 1
   # Maximum orders per side per market
   max_orders_per_side: 1
   # Minimum price change (cents) before requoting
@@ -43,9 +43,9 @@ quoting:
 
 risk:
   # Maximum contracts per market (net position)
-  max_position_per_market: 100
+  max_position_per_market: 3
   # Maximum total portfolio exposure in dollars
-  max_total_exposure_dollars: 500
+  max_total_exposure_dollars: 10
   # Inventory skew factor: how much to widen quotes per unit of inventory
   skew_cents_per_contract: 0.1
 
