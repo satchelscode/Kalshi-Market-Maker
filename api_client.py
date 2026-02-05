@@ -55,17 +55,28 @@ class KalshiClient:
     def _load_private_key(self):
         if self._private_key is None:
             import os
+            # Check KALSHI_PRIVATE_KEY env var first (raw PEM contents)
             key_pem = os.environ.get("KALSHI_PRIVATE_KEY")
-            if key_pem:
-                # Load directly from env var (for Render / cloud deploys)
-                self._private_key = serialization.load_pem_private_key(
-                    key_pem.encode(), password=None
+            if not key_pem:
+                # Also accept PEM contents in KALSHI_PRIVATE_KEY_PATH
+                # (common mistake: putting key contents instead of a file path)
+                path_val = os.environ.get("KALSHI_PRIVATE_KEY_PATH", "") or self.config.private_key_path
+                if path_val.strip().startswith("-----BEGIN"):
+                    key_pem = path_val
+                elif path_val:
+                    with open(path_val, "rb") as f:
+                        key_pem = f.read().decode()
+
+            if not key_pem:
+                raise RuntimeError(
+                    "No private key found. Set KALSHI_PRIVATE_KEY env var "
+                    "or KALSHI_PRIVATE_KEY_PATH to a .pem file path."
                 )
-            else:
-                with open(self.config.private_key_path, "rb") as f:
-                    self._private_key = serialization.load_pem_private_key(
-                        f.read(), password=None
-                    )
+
+            self._private_key = serialization.load_pem_private_key(
+                key_pem.encode() if isinstance(key_pem, str) else key_pem,
+                password=None,
+            )
         return self._private_key
 
     def _sign_request(self, method: str, path: str, timestamp: str) -> str:
