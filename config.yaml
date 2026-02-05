@@ -26,14 +26,14 @@ scanner:
   min_open_interest: 0
   # Maximum number of markets to quote simultaneously
   max_markets: 3
-  # Skip markets expiring within this many seconds
-  min_time_to_expiry_sec: 3600
+  # Skip markets expiring within this many seconds (600 = 10 min, allows live markets)
+  min_time_to_expiry_sec: 600
 
 pricing:
-  # Default spread width in cents
-  default_spread_cents: 4
+  # Default spread width in cents (target ~5¢ for live markets)
+  default_spread_cents: 5
   # Minimum spread width in cents
-  min_spread_cents: 2
+  min_spread_cents: 3
   # Maximum spread width in cents
   max_spread_cents: 10
   # Price bounds: don't quote outside these ranges (cents)
@@ -47,18 +47,22 @@ quoting:
   max_orders_per_side: 1
   # Minimum price change (cents) before requoting
   requote_threshold_cents: 1
+  # Order expiration in seconds (0 = no expiration)
+  # Short expiration prevents stale one-sided quotes during live games
+  order_expiration_sec: 120
 
 risk:
   # Maximum contracts per market (net position)
   max_position_per_market: 3
   # Maximum total portfolio exposure in dollars
   max_total_exposure_dollars: 10
-  # Inventory skew factor: how much to widen quotes per unit of inventory
-  skew_cents_per_contract: 0.1
+  # Inventory skew factor: how much to shift quotes per unit of inventory
+  # At 1.5¢/contract, after 1 fill the spread shifts noticeably to help offload
+  skew_cents_per_contract: 1.5
 
 loop:
-  # Main loop poll interval in seconds
-  poll_interval_sec: 15
+  # Main loop poll interval in seconds (10s for live market responsiveness)
+  poll_interval_sec: 10
 
 logging:
   # Log level: DEBUG, INFO, WARNING, ERROR

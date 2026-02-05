@@ -1,8 +1,10 @@
 """Quoting engine: manages resting limit orders on both sides of markets."""
 
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from api_client import KalshiClient
@@ -24,6 +26,7 @@ class ManagedOrder:
     price: int  # in cents
     count: int
     remaining_count: int
+    placed_at: float = 0.0  # time.monotonic() when placed
 
 
 @dataclass
@@ -86,23 +89,43 @@ class QuotingEngine:
         desired_price: int,
     ) -> Optional[ManagedOrder]:
         """Update one side (YES bid or NO bid) of our quote."""
-        # If we have an existing order, check if it needs amending
+        needs_replace = False
+
         if existing is not None:
             price_diff = abs(existing.price - desired_price)
-            if price_diff < self.config.requote_threshold_cents:
-                # Price hasn't moved enough, keep existing order
+
+            # Check if order has expired (stale quote protection)
+            expired = False
+            if self.config.order_expiration_sec > 0 and existing.placed_at > 0:
+                age = time.monotonic() - existing.placed_at
+                if age >= self.config.order_expiration_sec:
+                    expired = True
+                    logger.info(
+                        "Expiring %s bid for %s at %d¢ (age=%.0fs)",
+                        side, ticker, existing.price, age,
+                    )
+
+            if not expired and price_diff < self.config.requote_threshold_cents:
+                # Price hasn't moved enough and not expired, keep existing order
                 return existing
 
-            # Price has moved, cancel and replace
-            # (amend could also work but cancel+replace is simpler for v1)
+            # Cancel the stale/expired order
+            needs_replace = True
             try:
                 self.client.cancel_order(existing.order_id)
                 logger.info(
-                    "Canceled stale %s bid for %s at %d¢",
+                    "Canceled %s %s bid for %s at %d¢",
+                    "expired" if expired else "stale",
                     side, ticker, existing.price,
                 )
             except Exception as e:
                 logger.warning("Failed to cancel order %s: %s", existing.order_id, e)
+
+        # Compute expiration time for new order
+        expiration_time = None
+        if self.config.order_expiration_sec > 0:
+            exp = datetime.now(timezone.utc) + timedelta(seconds=self.config.order_expiration_sec)
+            expiration_time = exp.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Place new order
         try:
@@ -115,6 +138,7 @@ class QuotingEngine:
                 count=self.config.order_size,
                 order_type="limit",
                 client_order_id=client_oid,
+                expiration_time=expiration_time,
             )
             order = resp.get("order", resp)
             order_id = order.get("order_id", "")
@@ -128,10 +152,12 @@ class QuotingEngine:
                 price=desired_price,
                 count=self.config.order_size,
                 remaining_count=self.config.order_size,
+                placed_at=time.monotonic(),
             )
             logger.info(
-                "Placed %s bid for %s at %d¢ x%d (order=%s)",
-                side, ticker, desired_price, self.config.order_size, order_id,
+                "Placed %s bid for %s at %d¢ x%d (order=%s, expires=%s)",
+                side, ticker, desired_price, self.config.order_size,
+                order_id, expiration_time or "never",
             )
             return managed
 

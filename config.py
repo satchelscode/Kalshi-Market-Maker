@@ -45,6 +45,7 @@ class QuotingConfig:
     order_size: int = 10
     max_orders_per_side: int = 1
     requote_threshold_cents: int = 1
+    order_expiration_sec: int = 120
 
 
 @dataclass
