@@ -73,6 +73,9 @@ class KalshiClient:
                     "or KALSHI_PRIVATE_KEY_PATH to a .pem file path."
                 )
 
+            # Render/cloud env vars may store literal \n instead of newlines
+            key_pem = key_pem.replace("\\n", "\n").strip()
+
             self._private_key = serialization.load_pem_private_key(
                 key_pem.encode() if isinstance(key_pem, str) else key_pem,
                 password=None,
@@ -94,7 +97,8 @@ class KalshiClient:
         return base64.b64encode(signature).decode()
 
     def _auth_headers(self, method: str, path: str) -> dict[str, str]:
-        timestamp = str(int(datetime.now(timezone.utc).timestamp() * 1000))
+        # Use time.time() to match Kalshi's official starter code exactly
+        timestamp = str(int(time.time() * 1000))
         signature = self._sign_request(method.upper(), path, timestamp)
         return {
             "KALSHI-ACCESS-KEY": self.config.key_id,
