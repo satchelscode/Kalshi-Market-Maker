@@ -56,5 +56,5 @@ loop:
 logging:
   # Log level: DEBUG, INFO, WARNING, ERROR
   level: "INFO"
-  # Log to file (in addition to console)
-  log_file: "logs/market_maker.log"
+  # Log to file (in addition to console). Set empty to disable.
+  log_file: ""

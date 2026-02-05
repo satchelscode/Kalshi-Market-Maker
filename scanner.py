@@ -10,6 +10,9 @@ from config import ScannerConfig
 
 logger = logging.getLogger(__name__)
 
+# Max pages to fetch when scanning all markets (100 markets per page)
+MAX_SCAN_PAGES = 5
+
 
 @dataclass
 class MarketInfo:
@@ -42,37 +45,42 @@ class MarketScanner:
 
         # Otherwise scan by series or all open markets
         markets = self._fetch_markets()
-        viable = self._filter_markets(markets)
+        candidates = self._prefilter(markets)
+        viable = self._enrich_with_orderbooks(candidates)
         ranked = self._rank_markets(viable)
         return ranked[: self.config.max_markets]
 
     def _fetch_markets(self) -> list[dict]:
-        """Fetch all open markets, optionally filtered by series."""
+        """Fetch open markets with a page cap to avoid OOM."""
         all_markets = []
 
         if self.config.target_series:
             for series in self.config.target_series:
                 cursor = None
-                while True:
+                pages = 0
+                while pages < MAX_SCAN_PAGES:
                     resp = self.client.get_markets(
                         status="open", series_ticker=series, cursor=cursor
                     )
                     markets = resp.get("markets", [])
                     all_markets.extend(markets)
                     cursor = resp.get("cursor")
+                    pages += 1
                     if not cursor or not markets:
                         break
         else:
             cursor = None
-            while True:
+            pages = 0
+            while pages < MAX_SCAN_PAGES:
                 resp = self.client.get_markets(status="open", cursor=cursor)
                 markets = resp.get("markets", [])
                 all_markets.extend(markets)
                 cursor = resp.get("cursor")
+                pages += 1
                 if not cursor or not markets:
                     break
 
-        logger.info("Fetched %d open markets", len(all_markets))
+        logger.info("Fetched %d open markets (%d pages)", len(all_markets), pages)
         return all_markets
 
     def _scan_specific_tickers(self, tickers: list[str]) -> list[MarketInfo]:
@@ -91,10 +99,14 @@ class MarketScanner:
                 logger.warning("Failed to fetch ticker %s: %s", ticker, e)
         return sorted(results, key=lambda m: m.score, reverse=True)
 
-    def _filter_markets(self, markets: list[dict]) -> list[MarketInfo]:
-        """Filter markets by volume, open interest, and time to expiry."""
-        viable = []
+    def _prefilter(self, markets: list[dict]) -> list[dict]:
+        """Filter by volume/OI/expiry WITHOUT fetching orderbooks.
+
+        Sort by volume descending and take only the top candidates
+        to avoid excessive API calls.
+        """
         now = datetime.now(timezone.utc)
+        candidates = []
 
         for market in markets:
             volume_24h = market.get("volume_24h", 0) or 0
@@ -105,7 +117,6 @@ class MarketScanner:
             if open_interest < self.config.min_open_interest:
                 continue
 
-            # Check time to expiry
             expiry_str = market.get("close_time") or market.get("expiration_time")
             if expiry_str:
                 try:
@@ -118,7 +129,21 @@ class MarketScanner:
                 except (ValueError, TypeError):
                     pass
 
-            # Fetch orderbook for spread info
+            candidates.append(market)
+
+        # Sort by volume and only keep the top N for orderbook enrichment
+        candidates.sort(key=lambda m: m.get("volume_24h", 0) or 0, reverse=True)
+        top = candidates[: self.config.max_markets * 3]  # fetch 3x what we need
+        logger.info(
+            "Pre-filtered to %d candidates from %d markets",
+            len(top), len(markets),
+        )
+        return top
+
+    def _enrich_with_orderbooks(self, candidates: list[dict]) -> list[MarketInfo]:
+        """Fetch orderbooks only for the top candidates."""
+        viable = []
+        for market in candidates:
             try:
                 book = self.client.get_orderbook(market["ticker"])
                 info = self._build_market_info(market, book)
@@ -126,8 +151,7 @@ class MarketScanner:
                     viable.append(info)
             except Exception as e:
                 logger.debug("Skipping %s: %s", market.get("ticker"), e)
-
-        logger.info("Found %d viable markets", len(viable))
+        logger.info("Enriched %d markets with orderbook data", len(viable))
         return viable
 
     def _build_market_info(self, market: dict, book: dict) -> Optional[MarketInfo]:
@@ -147,10 +171,6 @@ class MarketScanner:
             except (ValueError, TypeError):
                 pass
 
-        # Parse orderbook
-        # Kalshi orderbook returns yes bids and no bids
-        # Best YES bid = highest price someone will pay for YES
-        # Best YES ask = 100 - best NO bid (since a NO bid at X means willing to sell YES at 100-X)
         yes_bids = book.get("yes", [])
         no_bids = book.get("no", [])
 
@@ -158,7 +178,6 @@ class MarketScanner:
         best_yes_ask = None
 
         if yes_bids:
-            # yes_bids is a list of [price, quantity] pairs
             best_yes_bid = max(lvl[0] for lvl in yes_bids)
         if no_bids:
             best_no_bid = max(lvl[0] for lvl in no_bids)
@@ -186,21 +205,15 @@ class MarketScanner:
         """Compute a ranking score. Higher is better for market making."""
         score = 0.0
 
-        # Volume is the primary indicator of activity
-        score += min(info.volume_24h, 5000) / 100  # cap contribution at 50
+        score += min(info.volume_24h, 5000) / 100
+        score += min(info.open_interest, 2000) / 100
 
-        # Open interest shows sustained interest
-        score += min(info.open_interest, 2000) / 100  # cap at 20
-
-        # Wider spreads mean more profit opportunity
         if info.spread is not None and info.spread > 0:
-            score += min(info.spread, 15) * 2  # cap at 30
+            score += min(info.spread, 15) * 2
 
-        # Prefer no maker fees
         if not info.has_maker_fees:
             score += 10
 
-        # Penalize very short time to expiry
         if info.time_to_expiry_sec < 7200:
             score -= 20
 
