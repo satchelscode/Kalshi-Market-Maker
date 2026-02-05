@@ -58,7 +58,7 @@ risk:
 
 loop:
   # Main loop poll interval in seconds
-  poll_interval_sec: 5
+  poll_interval_sec: 15
 
 logging:
   # Log level: DEBUG, INFO, WARNING, ERROR
