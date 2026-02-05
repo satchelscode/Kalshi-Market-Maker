@@ -73,10 +73,14 @@ class KalshiClient:
                     "or KALSHI_PRIVATE_KEY_PATH to a .pem file path."
                 )
 
+            # Render/cloud env vars may store literal \n instead of newlines
+            key_pem = key_pem.replace("\\n", "\n").strip()
+
             self._private_key = serialization.load_pem_private_key(
                 key_pem.encode() if isinstance(key_pem, str) else key_pem,
                 password=None,
             )
+        return self._private_key
         return self._private_key
 
     def _sign_request(self, method: str, path: str, timestamp: str) -> str:
