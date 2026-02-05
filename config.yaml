@@ -1,0 +1,60 @@
+# Kalshi Market Maker Configuration
+
+api:
+  # API key ID from Kalshi dashboard
+  key_id: "YOUR_API_KEY_ID"
+  # Path to RSA private key file (.pem)
+  private_key_path: "kalshi_private_key.pem"
+  # Environment: "demo" or "prod"
+  environment: "demo"
+
+scanner:
+  # Market series to scan (e.g., sports tickers)
+  target_series: []
+  # Specific market tickers to quote (overrides scanner)
+  target_tickers: []
+  # Minimum 24h volume to consider a market
+  min_volume_24h: 100
+  # Minimum open interest
+  min_open_interest: 50
+  # Maximum number of markets to quote simultaneously
+  max_markets: 5
+  # Skip markets expiring within this many seconds
+  min_time_to_expiry_sec: 3600
+
+pricing:
+  # Default spread width in cents
+  default_spread_cents: 4
+  # Minimum spread width in cents
+  min_spread_cents: 2
+  # Maximum spread width in cents
+  max_spread_cents: 10
+  # Price bounds: don't quote outside these ranges (cents)
+  min_price: 5
+  max_price: 95
+
+quoting:
+  # Default order size (number of contracts)
+  order_size: 10
+  # Maximum orders per side per market
+  max_orders_per_side: 1
+  # Minimum price change (cents) before requoting
+  requote_threshold_cents: 1
+
+risk:
+  # Maximum contracts per market (net position)
+  max_position_per_market: 100
+  # Maximum total portfolio exposure in dollars
+  max_total_exposure_dollars: 500
+  # Inventory skew factor: how much to widen quotes per unit of inventory
+  skew_cents_per_contract: 0.1
+
+loop:
+  # Main loop poll interval in seconds
+  poll_interval_sec: 5
+
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"
+  # Log to file (in addition to console)
+  log_file: "logs/market_maker.log"
