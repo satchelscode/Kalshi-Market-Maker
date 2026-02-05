@@ -29,6 +29,7 @@ An automated market making bot for Kalshi prediction markets. It posts resting l
 
 ## Deployment (Render)
 - Deployed as a **Background Worker** on Render (not a web service)
+- **Branch**: Render deploys from `main`. Feature branches merge into `main` via PR.
 - **Build command**: `pip install -r requirements.txt`
 - **Start command**: `python main.py`
 - **Logs**: Render Dashboard → service → "Logs" tab
@@ -37,7 +38,10 @@ An automated market making bot for Kalshi prediction markets. It posts resting l
   - `KALSHI_PRIVATE_KEY` — full PEM contents of private key (paste the whole key including BEGIN/END lines)
   - `KALSHI_ENVIRONMENT` — `demo` or `prod` (start with `demo`)
 - The bot reads the private key from `KALSHI_PRIVATE_KEY` env var directly (no file needed on Render)
+- The code auto-detects PEM contents vs file paths — either `KALSHI_PRIVATE_KEY` or `KALSHI_PRIVATE_KEY_PATH` will work with raw PEM contents
 - Alternatively for local dev: set `KALSHI_PRIVATE_KEY_PATH` pointing to a `.pem` file
+- **Troubleshooting**: If build fails, check that Render is deploying from `main` and the merge is complete
+- **Security**: Never log private key contents. If a key is leaked in logs, regenerate immediately in Kalshi dashboard
 
 ## Key Design Decisions
 - **Demo-first**: Defaults to demo API. Must explicitly set `environment: "prod"` to trade real money.
