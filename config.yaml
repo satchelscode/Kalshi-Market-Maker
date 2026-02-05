@@ -14,9 +14,9 @@ scanner:
   # Specific market tickers to quote (overrides scanner)
   target_tickers: []
   # Minimum 24h volume to consider a market
-  min_volume_24h: 100
+  min_volume_24h: 0
   # Minimum open interest
-  min_open_interest: 50
+  min_open_interest: 0
   # Maximum number of markets to quote simultaneously
   max_markets: 3
   # Skip markets expiring within this many seconds

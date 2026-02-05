@@ -54,11 +54,18 @@ class MarketMakerBot:
             logger.error("Check your API credentials and environment setting.")
             sys.exit(1)
 
-        # Scan for target markets
-        logger.info("Scanning for markets...")
-        targets = self.scanner.scan()
+        # Scan for target markets (retry up to 5 times with delay)
+        targets = []
+        for scan_attempt in range(5):
+            logger.info("Scanning for markets (attempt %d)...", scan_attempt + 1)
+            targets = self.scanner.scan()
+            if targets:
+                break
+            logger.warning("No viable markets found, retrying in 30s...")
+            time.sleep(30)
+
         if not targets:
-            logger.warning("No viable markets found. Check scanner config.")
+            logger.error("No viable markets found after 5 attempts. Check scanner config.")
             sys.exit(0)
 
         self.target_tickers = [t.ticker for t in targets]
