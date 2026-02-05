@@ -54,10 +54,18 @@ class KalshiClient:
 
     def _load_private_key(self):
         if self._private_key is None:
-            with open(self.config.private_key_path, "rb") as f:
+            import os
+            key_pem = os.environ.get("KALSHI_PRIVATE_KEY")
+            if key_pem:
+                # Load directly from env var (for Render / cloud deploys)
                 self._private_key = serialization.load_pem_private_key(
-                    f.read(), password=None
+                    key_pem.encode(), password=None
                 )
+            else:
+                with open(self.config.private_key_path, "rb") as f:
+                    self._private_key = serialization.load_pem_private_key(
+                        f.read(), password=None
+                    )
         return self._private_key
 
     def _sign_request(self, method: str, path: str, timestamp: str) -> str:
