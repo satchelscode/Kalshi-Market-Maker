@@ -48,6 +48,14 @@ Currently targeting NCAA basketball and NBA:
 - `KXNCAAWBTOTAL` — NCAA Women's basketball total points
 - `KXNBAGAME` — NBA moneyline (high volume)
 
+## Strategy: Live Market Making with 5¢ Spread
+- **Target live (in-game) markets** — pre-game has too little volume for both sides to fill
+- **5¢ target spread** — wider spread gives more edge per round trip, still competitive in live markets
+- **2-minute order expiration** — orders auto-expire so stale one-sided quotes don't linger; quoter also tracks `placed_at` and refreshes expired orders each loop
+- **1.5¢/contract inventory skew** — after 1 fill, quotes shift noticeably to encourage the other side to fill
+- **10s polling** — faster loop for live market responsiveness
+- **10-minute min time to expiry** — allows quoting markets closer to resolution (live games)
+
 ## Conservative Risk Limits (Current Prod Config)
 - `order_size: 1` — 1 contract per order
 - `max_position_per_market: 3` — max 3 net contracts per market
