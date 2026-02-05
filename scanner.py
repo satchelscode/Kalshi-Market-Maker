@@ -10,8 +10,8 @@ from config import ScannerConfig
 
 logger = logging.getLogger(__name__)
 
-# Max pages to fetch when scanning all markets (100 markets per page)
-MAX_SCAN_PAGES = 5
+# Max pages to fetch per series (100 markets per page)
+MAX_SCAN_PAGES = 2
 
 
 @dataclass

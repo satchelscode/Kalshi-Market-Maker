@@ -1,5 +1,6 @@
 """Main loop: orchestrates the market making bot."""
 
+import gc
 import logging
 import os
 import signal
@@ -78,6 +79,9 @@ class MarketMakerBot:
 
         # Sync existing positions
         self.risk.sync_positions()
+
+        # Free memory from scanning
+        gc.collect()
 
         # Main loop
         self.running = True

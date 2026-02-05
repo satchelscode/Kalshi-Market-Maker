@@ -10,11 +10,18 @@ api:
 
 scanner:
   # Market series to scan (e.g., sports tickers)
-  target_series: []
+  target_series:
+    - "KXNCAAMBGAME"    # NCAA Men's basketball moneyline
+    - "KXNCAAMBSPREAD"  # NCAA Men's basketball spread
+    - "KXNCAAMBTOTAL"   # NCAA Men's basketball total points
+    - "KXNCAAWBGAME"    # NCAA Women's basketball moneyline
+    - "KXNCAAWBSPREAD"  # NCAA Women's basketball spread
+    - "KXNCAAWBTOTAL"   # NCAA Women's basketball total points
+    - "KXNBAGAME"       # NBA moneyline (bonus - high volume)
   # Specific market tickers to quote (overrides scanner)
   target_tickers: []
   # Minimum 24h volume to consider a market
-  min_volume_24h: 0
+  min_volume_24h: 5
   # Minimum open interest
   min_open_interest: 0
   # Maximum number of markets to quote simultaneously
@@ -51,7 +58,7 @@ risk:
 
 loop:
   # Main loop poll interval in seconds
-  poll_interval_sec: 5
+  poll_interval_sec: 15
 
 logging:
   # Log level: DEBUG, INFO, WARNING, ERROR
