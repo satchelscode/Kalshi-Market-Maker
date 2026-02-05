@@ -22,7 +22,7 @@ An automated market making bot for Kalshi prediction markets. It posts resting l
 
 ## Kalshi API Essentials
 - **Base URLs**: `https://demo-api.kalshi.co/trade-api/v2` (demo), `https://api.elections.kalshi.com/trade-api/v2` (prod)
-- **Auth**: RSA-PSS signatures. Headers: `KALSHI-ACCESS-KEY`, `KALSHI-ACCESS-SIGNATURE`, `KALSHI-ACCESS-TIMESTAMP`
+- **Auth**: RSA-PSS signatures (SHA256, salt_length=DIGEST_LENGTH). Sign `timestamp_ms + METHOD + /trade-api/v2/path` (no query params). Headers: `KALSHI-ACCESS-KEY`, `KALSHI-ACCESS-SIGNATURE`, `KALSHI-ACCESS-TIMESTAMP`
 - **Rate limits**: 20 reads/sec, 10 writes/sec (Basic tier)
 - **Orderbook**: Only returns bids. A YES bid at 48¢ = NO ask at 52¢. A NO bid at 48¢ = YES ask at 52¢.
 - **Fee structure**: Taker fee `0.07 * C * P * (1-P)`. Many markets have zero maker fees — that's our edge.

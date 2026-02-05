@@ -87,7 +87,7 @@ class KalshiClient:
             message,
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH,
+                salt_length=padding.PSS.DIGEST_LENGTH,
             ),
             hashes.SHA256(),
         )
@@ -118,11 +118,13 @@ class KalshiClient:
         else:
             self._read_limiter.acquire()
 
-        path = f"/trade-api/v2{endpoint}"
+        # Sign with path only (no query params) per Kalshi docs
+        sign_path = f"/trade-api/v2{endpoint}"
         url = f"{self.base_url}{endpoint}"
-        headers = self._auth_headers(method.upper(), path)
 
         for attempt in range(retries + 1):
+            # Re-sign on each attempt so the timestamp stays fresh
+            headers = self._auth_headers(method.upper(), sign_path)
             try:
                 resp = self.session.request(
                     method,
