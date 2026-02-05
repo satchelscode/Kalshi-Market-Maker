@@ -179,7 +179,8 @@ class KalshiClient:
 
     def get_orderbook(self, ticker: str) -> dict:
         """Get the full order book for a market."""
-        return self._request("GET", f"/markets/{ticker}/orderbook")
+        resp = self._request("GET", f"/markets/{ticker}/orderbook")
+        return resp.get("orderbook", resp)
 
     def get_market_history(
         self, ticker: str, limit: int = 100, cursor: Optional[str] = None
