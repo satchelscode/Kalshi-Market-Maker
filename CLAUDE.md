@@ -105,10 +105,11 @@ Currently targeting NCAA basketball and NBA:
 - **OOM on Render**: Cap scanner pages (MAX_SCAN_PAGES=2), prefilter candidates before orderbook fetch, call gc.collect() after scanning
 - **0 candidates**: Check volume/OI minimums aren't too strict; verify target_series tickers match Kalshi's naming convention
 - **PEM key errors**: Render may store literal `\n` in env vars; code handles this with `.replace("\\n", "\n")`
+- **Moneyline double exposure**: YES TeamA = NO TeamB for the same game. If bot quotes both tickers independently, it doubles up on the same directional bet. Scanner now deduplicates by game key — only quotes one ticker per moneyline game.
 
 ## Things To Watch Out For
 - The orderbook only returns bids — keep the YES/NO bid/ask conversion straight
 - Always use `client_order_id` on orders for deduplication
 - Demo and prod API keys are completely separate — a prod key won't work on demo and vice versa
-- Moneyline series have separate tickers per team; each is independently quoted as a binary market
+- **CRITICAL: Moneyline dedup** — Moneyline series (GAME) have two tickers per game (one per team). Scanner deduplicates to one per game. Spreads/totals are single-ticker and don't need dedup.
 - Render's 512MB memory limit can be hit if scanning too many markets or fetching too many orderbooks

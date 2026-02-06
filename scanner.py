@@ -1,6 +1,7 @@
 """Market scanner: identifies viable markets for market making."""
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
@@ -12,6 +13,12 @@ logger = logging.getLogger(__name__)
 
 # Max pages to fetch per series (100 markets per page)
 MAX_SCAN_PAGES = 2
+
+# Moneyline series have separate tickers per team in the same game.
+# e.g., KXNBAGAME-25FEB04-TOR-v-DET-TOR and KXNBAGAME-25FEB04-TOR-v-DET-DET
+# We must only quote ONE ticker per game, otherwise we accumulate the same
+# directional bet through both tickers (YES TeamA = NO TeamB).
+MONEYLINE_SERIES = {"KXNCAAMBGAME", "KXNCAAWBGAME", "KXNBAGAME"}
 
 
 @dataclass
@@ -237,7 +244,55 @@ class MarketScanner:
         return score
 
     def _rank_markets(self, markets: list[MarketInfo]) -> list[MarketInfo]:
-        """Rank markets by composite score."""
+        """Rank markets by composite score, deduplicating moneyline games."""
         for m in markets:
             m.score = self._compute_score(m)
-        return sorted(markets, key=lambda m: m.score, reverse=True)
+        ranked = sorted(markets, key=lambda m: m.score, reverse=True)
+        return self._dedup_moneyline(ranked)
+
+    @staticmethod
+    def _get_moneyline_game_key(ticker: str) -> Optional[str]:
+        """Extract the game identifier from a moneyline ticker.
+
+        e.g., 'KXNBAGAME-25FEB04-TOR-v-DET-TOR' -> 'KXNBAGAME-25FEB04-TOR-v-DET'
+        For moneyline tickers, the last segment after the last '-' is the team.
+        The rest is the game key shared by both team tickers.
+        """
+        for series in MONEYLINE_SERIES:
+            if ticker.startswith(series):
+                # Find the '-v-' pattern which separates the two teams
+                v_idx = ticker.find("-v-")
+                if v_idx == -1:
+                    return None
+                # After '-v-TEAM', there should be one more '-TEAM' at the end
+                after_v = ticker[v_idx + 3:]  # e.g., 'DET-TOR' or 'DET-DET'
+                dash_idx = after_v.find("-")
+                if dash_idx == -1:
+                    return None
+                # Game key is everything except the final team segment
+                game_key = ticker[:v_idx + 3 + dash_idx]
+                return game_key
+        return None
+
+    @staticmethod
+    def _dedup_moneyline(ranked: list["MarketInfo"]) -> list["MarketInfo"]:
+        """Keep only the highest-scoring ticker per moneyline game.
+
+        For moneyline markets, both team tickers in the same game represent
+        the same underlying event. Quoting both leads to doubling up on
+        directional risk (YES TeamA = NO TeamB).
+        """
+        seen_games: set[str] = set()
+        result = []
+        for m in ranked:
+            game_key = MarketScanner._get_moneyline_game_key(m.ticker)
+            if game_key is not None:
+                if game_key in seen_games:
+                    logger.info(
+                        "Skipping %s (already quoting another ticker for game %s)",
+                        m.ticker, game_key,
+                    )
+                    continue
+                seen_games.add(game_key)
+            result.append(m)
+        return result
